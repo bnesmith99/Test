@@ -5,6 +5,7 @@ import DomainObject.OrderDomainObject;
 import DomainObject.OrderPriceDomainObject;
 import DomainObject.PizzaDomainObject;
 import restService.Message;
+import restService.Request.UpdatePizzaStatusRequest;
 
 
 public class OrderModel {
@@ -86,11 +87,46 @@ public class OrderModel {
 		return null;
 	}
 
+public static OrderDomainObject GetOrdersByCustomerId(int customerId) {
+	
+		for (OrderDomainObject order : orders) {
+			if (order.customerId == customerId) {
+				return order;
+			}
+		}
+	
+		return null;
+	}
+	
+	public static OrderDomainObject CreateOrder(Message message, OrderDomainObject data) {    
+		if (data == null) {
+			message.addErrorMessage("Order data cannot be null");
+			
+			return null;
+			}
 
 	public static OrderDomainObject CreateOrder(Message message, OrderDomainObject data) {
-		//This needs to be implemented.
-        return null;
-    }
+			if (CustomerModel.GetCustomerById(data.customerId) == null) {
+				message.addErrorMessage("CustomerId does not exist");
+				
+				return null;
+			}
+	
+			for (OrderDomainObject existingOrder : orders) {
+				if (existingOrder.customerId == data.customerId && existingOrder.orderStatus.equals("Not Submitted")) {
+					message.addErrorMessage("Please submit your existing order before starting a new order.");
+					return null;
+				}
+			}
+
+			data.orderId = getNextId();
+
+			data.orderStatus = "Not Submitted";
+
+			orders.add(data);
+	
+			return data;
+	}
 
 
 	public static OrderDomainObject CancelOrder(Message message, int orderId) {
@@ -117,7 +153,24 @@ public class OrderModel {
 	}
 
     public static OrderDomainObject SubmitOrder(Message message, int orderId) {
-		//This needs to be implemented.
+		OrderDomainObject order = GetOrderById(orderId);
+		if(order == null){ // Checks if order exists
+			message.addErrorMessage("OrderId does not exist");
+		}
+		else if(!order.orderStatus.equals("Not Submitted")){ // Checks order status
+			message.addErrorMessage("This order is already being prepared.  The order cannot be submitted.");
+		}
+		else if(PizzaModel.GetPizzasForOrderId(orderId).isEmpty()){ // Checks if there is at least ONE pizza
+			message.addErrorMessage("Order must have at least one pizza.");
+		}
+		else{ // Updates statuses ONLY IF all validations are passed
+			order.orderStatus = "Submitted";
+			for (PizzaDomainObject pizza : PizzaModel.GetPizzasForOrderId(orderId)) {
+				pizza.status = "Submitted";
+			}
+			return order;
+		}
+		
         return null;
 	}
 
