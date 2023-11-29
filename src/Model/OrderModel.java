@@ -94,9 +94,27 @@ public class OrderModel {
 
 
 	public static OrderDomainObject CancelOrder(Message message, int orderId) {
-		//This needs to be implemented.
-        return null;
-    }
+		OrderDomainObject OID = GetOrderById(orderId);
+		if(OID != null) {
+			if (GetOrderById(orderId).orderStatus == "Submitted" || GetOrderById(orderId).orderStatus == "Not Submitted") {
+				OrderDomainObject order = GetOrderById(orderId);
+				int customerID = order.customerId;
+				order.setOrderStatus("Cancelled");
+				OrderDomainObject orders = new OrderDomainObject(orderId, "Cancelled", 0);
+				new UpdatePizzaStatusRequest(customerID, 1, order.orderStatus.toString());
+				ArrayList<PizzaDomainObject> orderPizzas = OID.getPizzas();
+				for (PizzaDomainObject pizza : orderPizzas) {
+					pizza.status = "Cancelled";
+				}
+				return orders;
+			} else if (OID.orderStatus == "Preparing" || OID.orderStatus == "Complete") {
+				message.addErrorMessage("This order is already being prepared.  The order cannot be cancelled.");
+			}
+		}else if (OID == null) {
+			message.addErrorMessage("OrderId does not exist");
+		}
+		return null;
+	}
 
     public static OrderDomainObject SubmitOrder(Message message, int orderId) {
 		//This needs to be implemented.
